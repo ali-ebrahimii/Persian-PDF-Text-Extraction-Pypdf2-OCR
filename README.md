@@ -1,82 +1,130 @@
-# Persian PDF Text Extraction (PyPDF2 + OCR)
+# Persian PDF Text Extraction
 
-This project provides a simple and effective pipeline for **extracting Persian (Farsi) text from PDF files**, using a combination of:
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Workflow-Jupyter-F37626?logo=jupyter&logoColor=white)
+![OCR](https://img.shields.io/badge/OCR-Tesseract-5D87BF)
+![Language](https://img.shields.io/badge/Language-Persian-1E8E3E)
 
-* **PyPDF2** for normal text-based PDFs
-* **OCR** (Tesseract or other engines) for scanned or image-based PDFs
-* **Post-processing & cleaning** to fix common Persian character issues
-* **Structured CSV export** for downstream NLP or dataset creation
+A notebook-based pipeline for extracting and cleaning Persian text from both digital and scanned PDF collections. It tries native PDF extraction first, scores the result, and falls back to Persian/English OCR when the extracted text is too short or low quality.
 
-It is ideal for research, academic projects, dataset preparation, or preprocessing Persian books and articles.
+> This is a research and dataset-preparation workflow, not a packaged Python library. Review extracted text before using it in production or high-stakes applications.
 
----
+## Why this project
 
-## 📂 Repository Contents
+Persian PDF collections often mix searchable documents with scanned pages. A single extraction method is therefore unreliable: native parsing is fast but cannot read images, while OCR is slower and can introduce errors. This workflow uses a quality-aware fallback so OCR runs only when it is likely to improve the result.
 
-```
-Persian-PDF-Text-Extraction-Pypdf2-OCR/
-│
-├── PDF_Text_Extraction.ipynb   # Main Jupyter notebook for extraction pipeline
-├── pdf_extraction_summary.csv   # Output summary of extracted text
-└── README.md                    # Documentation
-```
+## Pipeline
 
----
-
-## 🚀 Features
-
-* Supports **Farsi/Persian PDFs**
-* Automatic detection:
-  ✓ text-based PDF → extract with PyPDF2
-  ✓ scanned PDF → extract via OCR
-* Cleans and normalizes Persian text (ی / ك / ‌ / …)
-* Exports results to a clean CSV file
-* Works well for books, articles, and scientific PDFs
-
----
-
-## ▶️ Usage
-
-1. Open the main notebook:
-
-```
-PDF_Text_Extraction.ipynb
+```mermaid
+flowchart LR
+    A["PDF collection"] --> B["PyPDF2 extraction"]
+    B --> C["Persian text cleanup"]
+    C --> D{"Quality score ≥ 0.6<br/>and ≥ 200 characters?"}
+    D -- Yes --> E["Keep native text"]
+    D -- No --> F["Render pages at 300 DPI"]
+    F --> G["Tesseract OCR: fas + eng"]
+    G --> H["Compare native and OCR scores"]
+    E --> I["Write text file and CSV summary"]
+    H --> I
 ```
 
-2. Set the input directory containing PDFs
+## What it demonstrates
 
-3. Run all cells to extract:
+- Recursive discovery of PDF files
+- Native text extraction with `PyPDF2`
+- Conditional OCR with `pdf2image` and Tesseract
+- Persian and Arabic character normalization
+- Heuristic quality scoring for extracted text
+- Selection of the better native/OCR result
+- Parallel batch processing with resumable CSV tracking
+- Post-processing for downstream NLP and dataset preparation
 
-   * Raw text
-   * Cleaned text
-   * OCR results (if needed)
+## Repository contents
 
-4. Final output will be saved into:
+| Path | Purpose |
+|---|---|
+| [`PDF_Text_Extraction.ipynb`](./PDF_Text_Extraction.ipynb) | Complete extraction, scoring, OCR, and cleanup workflow |
+| [`pdf_extraction_summary.csv`](./pdf_extraction_summary.csv) | Example batch-processing summary |
+| [`requirements.txt`](./requirements.txt) | Python dependencies |
 
-```
-pdf_extraction_summary.csv
-```
+## Quick start
 
----
+### 1. Install system dependencies
 
-## 📦 Requirements
-
-Install basic dependencies:
+Ubuntu/Debian:
 
 ```bash
-pip install pypdf2 pytesseract pandas
+sudo apt-get update
+sudo apt-get install -y poppler-utils tesseract-ocr tesseract-ocr-fas
 ```
 
-If using OCR, install Tesseract:
-
-### macOS (Homebrew)
+macOS with Homebrew:
 
 ```bash
-brew install tesseract
+brew install poppler tesseract tesseract-lang
 ```
 
-### Linux (Ubuntu)
+Verify that Persian OCR data is available:
 
 ```bash
-sudo apt-get install tesseract-ocr
+tesseract --list-langs
 ```
+
+The output should include `fas`.
+
+### 2. Install Python dependencies
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+### 3. Configure the notebook
+
+Open [`PDF_Text_Extraction.ipynb`](./PDF_Text_Extraction.ipynb) in Jupyter or Google Colab and change these paths for your environment:
+
+- `ROOT_FOLDER`: directory containing the source PDFs
+- `INPUT_DIR`: directory containing extracted text for post-processing
+- `OUTPUT_DIR`: destination for cleaned text
+
+The notebook currently includes Google Drive examples for Colab.
+
+### 4. Run the workflow
+
+Run the notebook cells in order. For every processed PDF, the pipeline writes a text file and records:
+
+- source directory and filename;
+- selected extraction method;
+- native extraction score;
+- OCR score;
+- final score; and
+- output path.
+
+Previously recorded filenames are skipped when the batch is resumed.
+
+## Quality-selection logic
+
+The notebook first extracts text with PyPDF2 and calculates a heuristic score using Persian-character ratio, text length, unexpected characters, and repetition. OCR is attempted when the native result scores below `0.6` or contains fewer than `200` characters. If OCR runs, the higher-scoring result is kept.
+
+These thresholds are practical defaults, not universal accuracy guarantees. Tune them against a labeled sample from your own document collection.
+
+## Limitations
+
+- Multi-column pages, tables, handwriting, and low-resolution scans may require specialized layout models.
+- The quality score estimates text cleanliness; it is not character-level OCR accuracy.
+- Tesseract language-pack availability varies by operating system.
+- Paths in the notebook are examples and must be adapted outside Google Colab.
+- Extracted documents may contain private or copyrighted information; confirm that you are authorized to process and store them.
+
+## Suggested next steps
+
+- Move reusable functions from the notebook into a tested Python package
+- Add a command-line interface and configuration file
+- Evaluate character and word error rates on a labeled Persian test set
+- Add layout-aware extraction for tables and multi-column documents
+- Add automated tests for normalization and quality scoring
+
+## Author
+
+**Ali Ebrahimi** — Applied AI and Persian NLP
+
+[GitHub](https://github.com/ali-ebrahimii) · [LinkedIn](https://www.linkedin.com/in/ali-ebrahimi-264236241/)
